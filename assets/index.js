@@ -29,16 +29,19 @@ class Bloque{
         this.type = "normal";
         this.bg = "black";
         this.click = false;
+        this.band = false;
+        this.changeBand = false;
     }
     draw(context){
         
         context.save();
         context.strokeStyle = "red";
-        context.translate(this.x,this.y);
-        context.strokeRect(0,0,this.wg,this.wg);
+        context.translate(this.x+1,this.y+1);
+        context.strokeRect(0,0,this.wg-2,this.wg-2);
         context.restore();
     }
     drawNoClick(context){
+        
         context.save();
         context.strokeStyle = "cyan";
         context.translate(this.x,this.y);
@@ -48,8 +51,19 @@ class Bloque{
     drawLimpiar(context){
         context.save();
         context.fillStyle = this.bg;
-        context.translate(this.x, this.y);
+        context.translate(this.x-1, this.y-1);
         context.fillRect(0,0,this.wg,this.wg);
+        context.restore();
+    }
+    drawBand(context){
+        context.save();
+        context.fillStyle = "white";
+        context.font = `${this.wg - 2}px Arial`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        
+        context.translate(this.x + this.wg/2,this.y+ this.wg/2);
+        context.fillText("b",0,0);
         context.restore();
     }
 }
@@ -86,6 +100,7 @@ class BloqueResguard extends Bloque{
         this.type = "resguard";
     }
     draw(context){
+        
         context.save();
         context.fillStyle=this.color;
         context.font = `${this.wg-1}px Arial`;
@@ -110,7 +125,6 @@ class BloqueNum extends BloqueResguard{
 let numBombas = 0;
 let bloques;
 
-console.log(numBombas);
 const getAdyacentes = (i,ncell,nw) =>{
     return [i-nw, i , i + nw].flatMap(e=>{
         const listPos = [];
@@ -161,12 +175,22 @@ canvas.onclick = (evt)=>{
     if(gameover) return;
     const pos = mousePosition(canvas,evt);
     let i = Math.floor(pos.x/wg) + Math.floor(pos.y/wg)*nw;
+    
+    
+    if(bloques[i].changeBand){
+        bloques[i].band = false;
+        bloques[i].changeBand = false;
+        return;
+    }
+    if(bloques[i].band) return;
     if(bloques[i].type == "bomba"){
         gameover = true;
         bloques.forEach(e=>{
             if(e.type=="bomba"){
                 e.drawLimpiar(context);
                 e.draw(context);
+                if(e.band) e.drawBand(context);
+                
             }
         })
         bloques[i].drawRed(context);
@@ -174,8 +198,11 @@ canvas.onclick = (evt)=>{
         return;
     }
 
-    if(bloques[i].click) return;
+    
+    bloques[i].click = true;
+
     if(bloques[i].type != "normal"){
+        
         bloques[i].drawLimpiar(context);
         bloques[i].draw(context);
         return;
@@ -188,6 +215,7 @@ canvas.onclick = (evt)=>{
         const ady = getAdyacentes(i,ncell,nw);
         listaVisibles.push(...ady);
         ady.forEach(e=>{
+            if(bloques[e].band) return;
             if(bloques[e].type=="normal" && !bloques[e].click) {
                 bloques[e].click = true;
                 pila.push(bloques[e])
@@ -195,6 +223,7 @@ canvas.onclick = (evt)=>{
         });
     }
     listaVisibles.forEach(e=>{
+        if(bloques[e].band) return;
         bloques[e].drawLimpiar(context);
         bloques[e].draw(context);
         bloques[e].click = true;
@@ -204,6 +233,30 @@ canvas.onclick = (evt)=>{
     
     
 };
+var timer;
+canvas.onmousedown = (evt) =>{
+    if(gameover) return;
+    const pos = mousePosition(canvas,evt);
+    let i = Math.floor(pos.x/wg) + Math.floor(pos.y/wg)*nw;
+    timer = setTimeout(() =>{
+        if(bloques[i].click) return;
+        if(bloques[i].band){
+            bloques[i].changeBand = true;
+            bloques[i].drawLimpiar(context);
+            bloques[i].drawNoClick(context);
+            return;
+        }
+        bloques[i].band = true;
+        bloques[i].drawLimpiar(context);
+        bloques[i].drawBand(context);
+    },500);
+};
+canvas.onmouseup = () =>{
+    if(gameover) return;
+    clearTimeout(timer);
+    
+};
+
 //for(let i=0;i<ncell;i++){
 //    context.save();
 //    context.translate(x,y);
